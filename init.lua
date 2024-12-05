@@ -91,7 +91,7 @@ vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
 -- Set to true if you have a Nerd Font installed and selected in the terminal
-vim.g.have_nerd_font = false
+vim.g.have_nerd_font = true
 
 -- [[ Setting options ]]
 -- See `:help vim.opt`
@@ -256,6 +256,15 @@ require('lazy').setup({
     },
   },
 
+  -- My Plugins
+  -- AutoSave plugin
+  'pocco81/auto-save.nvim',
+
+  'nvim-tree/nvim-tree.lua',
+
+  -- Comment plugin
+  'numToStr/Comment.nvim',
+
   -- NOTE: Plugins can also be configured to run Lua code when they are loaded.
   --
   -- This is often very useful to both group configuration, as well as handle
@@ -320,6 +329,8 @@ require('lazy').setup({
         { '<leader>s', group = '[S]earch' },
         { '<leader>w', group = '[W]orkspace' },
         { '<leader>t', group = '[T]oggle' },
+        { '<leader>G', group = '[G]it' },
+        { '<leader>C', group = '[C]argo' },
         { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } },
       },
     },
@@ -906,7 +917,7 @@ require('lazy').setup({
         -- Some languages depend on vim's regex highlighting system (such as Ruby) for indent rules.
         --  If you are experiencing weird indenting issues, add the language to
         --  the list of additional_vim_regex_highlighting and disabled languages for indent.
-        additional_vim_regex_highlighting = { 'ruby' },
+        additional_vim_regex_highlighting = { 'slint', 'ruby' },
       },
       indent = { enable = true, disable = { 'ruby' } },
     },
@@ -965,6 +976,52 @@ require('lazy').setup({
     },
   },
 })
+
+-- Make background transparent
+vim.cmd [[
+  hi Normal guibg=NONE ctermbg=NONE
+  hi NonText guibg=NONE ctermbg=NONE
+  hi VertSplit guibg=NONE ctermbg=NONE
+  hi StatusLine guibg=NONE ctermbg=NONE
+  hi TabLine guibg=NONE ctermbg=NONE
+  hi Pmenu guibg=NONE ctermbg=NONE
+  hi PmenuSel guibg=NONE ctermbg=NONE
+]]
+
+-- Fox custom keymaps
+-- Keymap for Cargo commands
+vim.api.nvim_set_keymap('n', '<leader>CT', ':!cargo test<CR>', { desc = '[C]argo [T]est', noremap = true, silent = true }) -- Run tests
+vim.api.nvim_set_keymap('n', '<leader>CB', ':!cargo build<CR>', { desc = '[C]argo [B]uild', noremap = true, silent = true }) -- Build project
+vim.api.nvim_set_keymap('n', '<leader>CR', ':!cargo run<CR>', { desc = '[C]argo [R]un', noremap = true, silent = true }) -- Run project
+
+-- Keymaps for git
+vim.api.nvim_set_keymap('n', '<leader>GC', ':lua git_add_and_commit()<CR>', { desc = 'Git add file and [C]ommit', noremap = true, silent = true })
+
+function git_add_and_commit()
+  -- Prompt for a file name or path
+  local file = vim.fn.input 'File to add (leave empty for all): '
+
+  -- Determine the git add command
+  local add_command = (file ~= '' and 'git add ' .. file) or 'git add .'
+
+  -- Execute the git add command
+  vim.cmd('! ' .. add_command)
+
+  -- Call commit_changes() function
+  commit_changes()
+end
+
+function commit_changes()
+  local message = vim.fn.input 'Commit message: ' -- Prompt for a commit message
+  if message ~= '' then
+    vim.cmd("!git commit -m '" .. message .. "'")
+  else
+    print 'Commit message cannot be empty!'
+  end
+end
+
+-- Toggle AutoSave
+vim.keymap.set('n', '<leader>ta', ':AST', { desc = '[T]oggle [A]utoSave' })
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
