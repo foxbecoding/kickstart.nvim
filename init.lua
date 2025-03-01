@@ -257,10 +257,79 @@ require('lazy').setup({
   },
 
   -- My Plugins
+  {
+    'neovim/nvim-lspconfig',
+    dependencies = {
+      'pmizio/typescript-tools.nvim',
+    },
+    opts = {
+      servers = {
+        tsservercontext = {},
+      },
+
+      setup = {
+        tsservercontext = function(_, opts)
+          local neoconf = require 'neoconf'
+          local lspconfig = require 'lspconfig'
+
+          if neoconf.get 'is-volar-project' then
+            lspconfig['volar'].setup {
+              server = opts,
+              settings = {},
+            }
+
+            require('typescript-tools').setup {
+              server = opts,
+              settings = {
+                tsserver_plugins = {
+                  '@vue/typescript-plugin',
+                },
+              },
+              filetypes = {
+                'javascript',
+                'typescript',
+                'vue',
+              },
+            }
+          else
+            require('typescript-tools').setup {
+              server = opts,
+            }
+          end
+
+          return true
+        end,
+      },
+    },
+  },
+  'nvim-tree/nvim-tree.lua',
+  {
+    'nvim-neo-tree/neo-tree.nvim',
+    branch = 'v3.x',
+    dependencies = {
+      'nvim-lua/plenary.nvim',
+      'nvim-tree/nvim-web-devicons', -- not strictly required, but recommended
+      'MunifTanjim/nui.nvim',
+      -- "3rd/image.nvim", -- Optional image support in preview window: See `# Preview Mode` for more information
+    },
+  },
+  {
+    'kndndrj/nvim-dbee',
+    dependencies = {
+      'MunifTanjim/nui.nvim',
+    },
+    build = function()
+      -- Install tries to automatically detect the install method.
+      -- if it fails, try calling it with one of these parameters:
+      --    "curl", "wget", "bitsadmin", "go"
+      require('dbee').install()
+    end,
+    config = function()
+      require('dbee').setup( --[[optional config]])
+    end,
+  },
   -- AutoSave plugin
   'pocco81/auto-save.nvim',
-
-  'nvim-tree/nvim-tree.lua',
 
   -- Comment plugin
   'numToStr/Comment.nvim',
@@ -724,7 +793,7 @@ require('lazy').setup({
         -- python = { "isort", "black" },
         --
         -- You can use 'stop_after_first' to run the first available formatter from the list
-        -- javascript = { "prettierd", "prettier", stop_after_first = true },
+        -- javascript = { 'prettierd', 'prettier', stop_after_first = true },
       },
     },
   },
@@ -903,6 +972,7 @@ require('lazy').setup({
       --  Check out: https://github.com/echasnovski/mini.nvim
     end,
   },
+  'slint-ui/vim-slint',
   { -- Highlight, edit, and navigate code
     'nvim-treesitter/nvim-treesitter',
     build = ':TSUpdate',
@@ -978,6 +1048,10 @@ require('lazy').setup({
 })
 
 -- Make background transparent
+-- Define a toggle state (default is transparent)
+local is_transparent = true
+
+-- Apply default transparency on load
 vim.cmd [[
   hi Normal guibg=NONE ctermbg=NONE
   hi NonText guibg=NONE ctermbg=NONE
@@ -988,7 +1062,37 @@ vim.cmd [[
   hi PmenuSel guibg=NONE ctermbg=NONE
 ]]
 
--- Fox custom keymaps
+-- Define the toggle function
+local function toggle_transparency()
+  if is_transparent then
+    -- Disable transparency (restore default background)
+    vim.cmd [[
+      hi Normal guibg=#1e1e1e ctermbg=NONE
+      hi NonText guibg=#1e1e1e ctermbg=NONE
+      hi VertSplit guibg=#1e1e1e ctermbg=NONE
+      hi StatusLine guibg=#1e1e1e ctermbg=NONE
+      hi TabLine guibg=#1e1e1e ctermbg=NONE
+      hi Pmenu guibg=#1e1e1e ctermbg=NONE
+      hi PmenuSel guibg=#1e1e1e ctermbg=NONE
+    ]]
+  else
+    -- Enable transparency
+    vim.cmd [[
+      hi Normal guibg=NONE ctermbg=NONE
+      hi NonText guibg=NONE ctermbg=NONE
+      hi VertSplit guibg=NONE ctermbg=NONE
+      hi StatusLine guibg=NONE ctermbg=NONE
+      hi TabLine guibg=NONE ctermbg=NONE
+      hi Pmenu guibg=NONE ctermbg=NONE
+      hi PmenuSel guibg=NONE ctermbg=NONE
+    ]]
+  end
+  is_transparent = not is_transparent
+end
+
+-- Bind the toggle function to a keymap
+vim.keymap.set('n', '<leader>tt', toggle_transparency, { desc = '[T]oggle [T]ransparency' })
+
 -- Keymap for Cargo commands
 vim.api.nvim_set_keymap('n', '<leader>CT', ':!cargo test<CR>', { desc = '[C]argo [T]est', noremap = true, silent = true }) -- Run tests
 vim.api.nvim_set_keymap('n', '<leader>CB', ':!cargo build<CR>', { desc = '[C]argo [B]uild', noremap = true, silent = true }) -- Build project
@@ -1022,6 +1126,89 @@ end
 
 -- Toggle AutoSave
 vim.keymap.set('n', '<leader>ta', ':AST', { desc = '[T]oggle [A]utoSave' })
+
+-- Nvim Tree
+-- disable netrw at the very start of your init.lua
+vim.g.loaded_netrw = 1
+vim.g.loaded_netrwPlugin = 1
+require('nvim-tree').setup()
+
+local mason_registry = require 'mason-registry'
+local vue_language_server_path = mason_registry.get_package('vue-language-server'):get_install_path() .. '/node_modules/@vue/language-server'
+
+local lspconfig = require 'lspconfig'
+
+lspconfig.ts_ls.setup {
+  init_options = {
+    plugins = {
+      {
+        name = '@vue/typescript-plugin',
+        location = vue_language_server_path,
+        languages = { 'vue' },
+      },
+    },
+  },
+  settings = {
+    typescript = {
+      tsserver = {
+        useSyntaxServer = true,
+      },
+      inlayHints = {
+        includeInlayParameterNameHints = 'all',
+        includeInlayParameterNameHintsWhenArgumentMatchesName = true,
+        includeInlayFunctionParameterTypeHints = true,
+        includeInlayVariableTypeHints = true,
+        includeInlayVariableTypeHintsWhenTypeMatchesName = true,
+        includeInlayPropertyDeclarationTypeHints = true,
+        includeInlayFunctionLikeReturnTypeHints = true,
+        includeInlayEnumMemberValueHints = true,
+      },
+    },
+  },
+  filetypes = { 'typescript', 'javascript', 'javascriptreact', 'typescriptreact', 'vue' },
+}
+
+-- No need to set `hybridMode` to `true` as it's the default value
+lspconfig.volar.setup {
+  init_options = {
+    vue = {
+      hybridMode = false,
+    },
+  },
+  settings = {
+    typescript = {
+      inlayHints = {
+        enumMemberValues = {
+          enabled = true,
+        },
+        functionLikeReturnTypes = {
+          enabled = true,
+        },
+        propertyDeclarationTypes = {
+          enabled = true,
+        },
+        parameterTypes = {
+          enabled = true,
+          suppressWhenArgumentMatchesName = true,
+        },
+        variableTypes = {
+          enabled = true,
+        },
+      },
+    },
+  },
+}
+
+require('neo-tree').setup {
+  window = {
+    position = 'float',
+  },
+}
+vim.api.nvim_set_keymap('n', '<leader>e', ':Neotree toggle<CR>', { noremap = true, silent = true })
+-- General settings
+vim.opt.tabstop = 4 -- Number of spaces a <Tab> represents
+vim.opt.shiftwidth = 4 -- Number of spaces for auto-indentation
+vim.opt.expandtab = true -- Use spaces instead of tabs
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
